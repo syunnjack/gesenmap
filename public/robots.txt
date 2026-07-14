@@ -1,2 +1,4 @@
 User-agent: *
 Disallow:
+
+Sitemap: https://gesenmap.example.com/sitemap.xml

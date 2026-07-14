@@ -14,12 +14,12 @@ return new class extends Migration
         Schema::create('game_centers', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->decimal('latitude', 10, 7);
-            $table->decimal('longitude', 10, 7);
+            $table->decimal('lat', 10, 7);
+            $table->decimal('lng', 10, 7);
             $table->boolean('has_prize')->default(false);
             $table->boolean('has_purikura')->default(false);
             $table->boolean('has_capsule')->default(false);
-            $table->text('comment')->nullable();
+            $table->text('description')->nullable();
             $table->timestamps();
         });
     }

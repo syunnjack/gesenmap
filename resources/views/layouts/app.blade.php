@@ -1,19 +1,51 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-    <title>Game Center Map</title>
-    <meta charset="utf-8">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>@yield('title', 'ゲーセンマップ | みんなで作るゲームセンター口コミ地図')</title>
+    <meta name="description" content="@yield('description', '全国のゲームセンターを地図から探せる、利用者投稿型のポータルサイトです。プライズ・プリクラ・カプセルトイの有無や、実際に行った人の口コミ・応援投票を確認できます。')">
+    <link rel="canonical" href="{{ url()->current() }}">
+
+    <meta property="og:site_name" content="ゲーセンマップ">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="@yield('title', 'ゲーセンマップ | みんなで作るゲームセンター口コミ地図')">
+    <meta property="og:description" content="@yield('description', '全国のゲームセンターを地図から探せる、利用者投稿型のポータルサイトです。プライズ・プリクラ・カプセルトイの有無や、実際に行った人の口コミ・応援投票を確認できます。')">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:locale" content="ja_JP">
+
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="@yield('title', 'ゲーセンマップ | みんなで作るゲームセンター口コミ地図')">
+    <meta name="twitter:description" content="@yield('description', '全国のゲームセンターを地図から探せる、利用者投稿型のポータルサイトです。プライズ・プリクラ・カプセルトイの有無や、実際に行った人の口コミ・応援投票を確認できます。')">
+
+    <link rel="icon" href="/favicon.ico" sizes="any">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
     <style>
-      body { padding: 20px; background:#fdfdfd; }
-      .card { padding: 12px; border: 1px solid #ccc; border-radius: 6px; background:#fff; }
+      .card { padding: 12px; }
     </style>
+
+    @stack('structured-data')
 </head>
 <body>
-  <div class="container">
-    @yield('content')
-  </div>
+    <nav class="navbar navbar-dark bg-dark text-white p-3 mb-4">
+        <div class="container">
+            <a href="{{ route('home') }}" class="h4 mb-0 text-white text-decoration-none">ゲーセンマップ</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        @yield('content')
+    </main>
+
+    <footer class="container text-center text-muted small py-4 mt-4 border-top">
+        <a href="{{ route('about') }}" class="text-muted">このサイトについて</a>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    @yield('scripts')
 </body>
 </html>

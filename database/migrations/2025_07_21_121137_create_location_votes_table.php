@@ -13,9 +13,12 @@ return new class extends Migration
     {
         Schema::create('location_votes', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('location_id');
+            $table->unsignedBigInteger('game_center_id');
+            $table->string('ip_hash', 64);
             $table->timestamps();
-            $table->foreign('location_id')->references('id')->on('locations')->onDelete('cascade');
+
+            $table->foreign('game_center_id')->references('id')->on('game_centers')->onDelete('cascade');
+            $table->unique(['game_center_id', 'ip_hash']);
         });
     }
 
