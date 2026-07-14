@@ -3,7 +3,7 @@
 @push('structured-data')
 <script type="application/ld+json">
 {!! json_encode([
-    '@context' => 'https://schema.org',
+    '@@context' => 'https://schema.org',
     '@type' => 'WebSite',
     'name' => 'ゲーセンマップ',
     'url' => url('/'),
@@ -14,7 +14,7 @@
 @if ($locations->isNotEmpty())
 <script type="application/ld+json">
 {!! json_encode([
-    '@context' => 'https://schema.org',
+    '@@context' => 'https://schema.org',
     '@type' => 'ItemList',
     'name' => 'ゲームセンター一覧',
     'itemListElement' => $locations->values()->map(function ($loc, $i) {
