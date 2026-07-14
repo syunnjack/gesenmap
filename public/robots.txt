@@ -1,4 +1,4 @@
 User-agent: *
 Disallow:
 
-Sitemap: https://gesenmap.example.com/sitemap.xml
+Sitemap: https://gesen-kuchikomi.jp/sitemap.xml
