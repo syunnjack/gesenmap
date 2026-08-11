@@ -95,6 +95,7 @@
   </details>
 
   <h2 class="h5">ゲームセンター一覧（{{ $locations->count() }}件）</h2>
+  <p class="text-muted small">全国のゲームセンター情報を掲載。プライズ・プリクラ・カプセルトイで絞り込めます。</p>
   @forelse($locations as $loc)
     <div class="card border mb-3">
       <strong>{{ $loc->name }}</strong>

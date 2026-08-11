@@ -33,3 +33,19 @@ jobs:
           remote_path: '/home/xs501620/gesenmap.jp/public_html/'
           sftp_only: true
           delete_remote_files: false
+
+      - name: Run migrations and seed via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: 10022
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/xs501620/gesenmap.jp/app
+            PHP=/opt/php-8.3.30/bin/php
+            $PHP artisan migrate --force
+            $PHP artisan db:seed --force 2>&1 || echo "Seeder warning (non-fatal)"
+            $PHP artisan config:cache
+            $PHP artisan route:cache
+            $PHP artisan view:cache
