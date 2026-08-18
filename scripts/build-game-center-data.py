@@ -3,6 +3,7 @@
 出典（いずれも各社の公式サイト。robots.txt で許可されていることを確認して読む）:
   - GiGO お店情報サイト https://www.gigo.co.jp/shops
   - バンダイナムコ アミューズメント https://bandainamco-am.co.jp/game_center/
+  - イオンファンタジー 店舗検索 https://www.fantasy.co.jp/shoplist/（ゲーム機を置くブランドのみ）
 
 取るのは公式ページに載っている事実だけ（店名・住所・電話・営業時間・設置ゲームの種類）。
 書いていないことは埋めない。緯度経度が公表されていない店舗は、
@@ -32,6 +33,19 @@ GEOCODE_DELAY = 1.0  # 国土地理院APIへの間隔（秒）
 GIGO_SITEMAP = 'https://www.gigo.co.jp/sitemap.xml'
 NAMCO_SITEMAP = 'https://bandainamco-am.co.jp/sitemap_game_center.xml'
 NAMCO_SHOP = 'https://bandainamco-am.co.jp/game_center/loc/{}/'
+AEON_LIST = 'https://www.fantasy.co.jp/shoplist/page/{}'
+# イオンファンタジーはゲームセンター以外（屋内遊戯場・スイミング等）も運営している。
+# ゲーム機を置くブランドだけを載せる。
+AEON_BRANDS = {
+    'molly': 'モーリーファンタジー',
+    'mollyf': 'モーリーファンタジーf',
+    'palo': 'PALO',
+    'tsp': 'TOYS SPOT PALO',
+    'psp': 'PRIZE SPOT PALO',
+    'crane': 'クレーン横丁',
+    'cranekiwami': 'クレーン横丁 極',
+    'capsule': 'カプセル横丁',
+}
 GEOCODER = 'https://msearch.gsi.go.jp/address-search/AddressSearch?q={}'
 
 # 掲載するのは日本国内の店舗だけ（各チェーンは海外にも出店している）
@@ -195,6 +209,92 @@ def fetch_namco() -> list[dict]:
     return shops
 
 
+AEON_BLOCK = re.compile(
+    r'<div class="result-detail_box brand-([a-z0-9_-]+)">(.*?)<!-- / \.result-detail_box-->', re.S)
+
+
+def fetch_aeon() -> list[dict]:
+    """イオンファンタジーの店舗検索。一覧に名称・座標・住所・電話がまとめて載っている。"""
+    cache = CACHE / 'aeon.json'
+    if cache.exists():
+        return json.loads(cache.read_text(encoding='utf-8'))
+
+    shops = []
+    page = 1
+    while True:
+        try:
+            html = get(AEON_LIST.format(page))
+        except Exception as error:
+            print(f'イオンファンタジー {page}ページ目 失敗 {error}', flush=True)
+            break
+
+        blocks = AEON_BLOCK.findall(html)
+        if not blocks:
+            break
+
+        for brand, body in blocks:
+            if brand not in AEON_BRANDS:
+                continue  # ゲーム機を置かないブランド
+
+            name_match = re.search(r'class="shop-name">(.*?)</h2>', body, re.S)
+            if not name_match:
+                continue
+            heading = name_match.group(1)
+            url = re.search(r'href="([^"]+)"', heading)
+            coordinates = re.search(r'<!--\s*([0-9.]+)\s*,\s*([0-9.]+)\s*-->', heading)
+            name = re.sub(r'<[^>]+>', '', re.sub(r'<!--.*?-->', '', heading, flags=re.S)).strip()
+
+            address_match = re.search(r'class="shop-add">(.*?)</p>', body, re.S)
+            raw_address = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', address_match.group(1))).strip()                 if address_match else ''
+            postal = re.search(r'〒\s*([0-9]{3}-[0-9]{4})', raw_address)
+            address = re.sub(r'〒\s*[0-9]{3}-[0-9]{4}', '', raw_address).strip()
+
+            floor = re.search(r'class="shop-area">(.*?)</p>', body, re.S)
+            tel = re.search(r'class="tel-link">(.*?)</span>', body, re.S)
+            services = re.findall(r'ico-svc-[a-z0-9_-]+"><span>(.*?)</span>', body)
+
+            prefecture = next((p for p in PREFECTURES if address.startswith(p)), None)
+            # 「三重県津市高茶屋小森町145番地」→「津市」。郡がある住所は「〇〇郡△△町」まで取る。
+            city = None
+            if prefecture:
+                rest = address[len(prefecture):].lstrip()
+                city_match = re.match(r'(?:.{1,6}?郡)?.{1,8}?[市区町村]', rest)
+                if city_match:
+                    city = city_match.group(0)
+                    # 「四日市市」「廿日市市」のように、市名自体に「市」が入る場合がある
+                    if rest[len(city):len(city) + 1] == '市':
+                        city += '市'
+
+            shops.append({
+                'chain': 'イオンファンタジー（'+AEON_BRANDS[brand]+'）',
+                'slug': 'aeon-' + (url.group(1).rstrip('/').rsplit('/', 1)[-1] if url
+                                   else re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')),
+                'name': name,
+                'prefecture': prefecture,
+                'city': city,
+                'address': ' '.join(filter(None, [
+                    address, re.sub(r'<[^>]+>', '', floor.group(1)).strip() if floor else None,
+                ])),
+                'postalCode': postal.group(1) if postal else None,
+                'tel': tel.group(1).strip() if tel else None,
+                'lat': float(coordinates.group(1)) if coordinates else None,
+                'lng': float(coordinates.group(2)) if coordinates else None,
+                'hours': [],
+                'games': ['カプセルトイ'] if any('カプセルトイ' in service for service in services) else [],
+                'features': services,
+                'sourceUrl': url.group(1) if url else AEON_LIST.format(page),
+                'sourceLabel': 'イオンファンタジー公式サイト 店舗検索',
+            })
+
+        print(f'イオンファンタジー {page}ページ目 {len(shops)}件', flush=True)
+        page += 1
+        time.sleep(DELAY)
+
+    CACHE.mkdir(exist_ok=True)
+    cache.write_text(json.dumps(shops, ensure_ascii=False), encoding='utf-8')
+    return shops
+
+
 def geocode(shops: list[dict]) -> None:
     """緯度経度が無い店舗を、国土地理院の住所検索APIで補う。"""
     cache_path = CACHE / 'geocode.json'
@@ -261,7 +361,7 @@ def has_any(words: list[str], keywords: tuple[str, ...]) -> bool:
 
 def main() -> None:
     CACHE.mkdir(exist_ok=True)
-    shops = fetch_gigo() + fetch_namco()
+    shops = fetch_gigo() + fetch_namco() + fetch_aeon()
     geocode(shops)
 
     records = []

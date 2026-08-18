@@ -1,0 +1,42 @@
+name: Refresh store data
+
+# 各チェーンの公式サイトから店舗データを取り直す。
+# 差分があればコミットし、その push で通常のデプロイが動いて本番に反映される。
+# 閉店・移転した店舗は取り込み時に掲載から外れる。
+on:
+  schedule:
+    - cron: '0 19 1 * *'  # 毎月1日 04:00（日本時間）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 公式サイトへは1.5秒あけて順に読む。全体で30〜40分ほどかかる。
+      - name: Rebuild game-centers.json
+        run: python scripts/build-game-center-data.py
+
+      - name: Commit if the data changed
+        run: |
+          if git diff --quiet -- database/data/game-centers.json; then
+            echo "変更なし。コミットしません。"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add database/data/game-centers.json
+          git commit -m "店舗データを公式サイトの最新の内容に更新する
+
+          scripts/build-game-center-data.py の定期実行による更新。
+          閉店・掲載終了した店舗は取り込み時に掲載から外れる。"
+          git push

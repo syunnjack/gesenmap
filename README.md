@@ -5,10 +5,13 @@
 ## 掲載データ
 
 - 店舗の名称・住所・電話・営業時間・設置しているゲームの種類は、**各チェーンの公式サイトで確認したもの**
-  （GiGO / バンダイナムコアミューズメント）。店舗ページに出典と確認日を出す。公表されていない項目は空欄にし、推測で埋めない
+  （GiGO / バンダイナムコアミューズメント / イオンファンタジー）。店舗ページに出典と確認日を出す。公表されていない項目は空欄にし、推測で埋めない
 - 生成: `python scripts/build-game-center-data.py` → `database/data/game-centers.json`
   （取得済みの内容は `scripts/.cache` に残るので、作り直すときはそこを消す）
-- 取り込み: `php artisan db:seed --class=GameCenterOfficialSeeder`（slug をキーにした upsert）
+- 取り込み: `php artisan db:seed --class=GameCenterOfficialSeeder`（slug をキーにした upsert。
+  データから消えた公式店舗は掲載から外す）
+- 更新は毎月1日に `.github/workflows/refresh-data.yml` が自動で流す（手動実行も可）。
+  差分が出たらコミットされ、その push でデプロイまで進む
 - 口コミ・応援投票・地図からの店舗登録は利用者の投稿。店舗ページで公式情報と区別して表示する
 
 ## デプロイ（Xserver）
