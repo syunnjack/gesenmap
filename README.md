@@ -1,3 +1,28 @@
+# ゲーセンマップ（gesenmap.jp）
+
+全国のゲームセンターを地図・都道府県から探せるサイト。Laravel + SQLite。
+
+## 掲載データ
+
+- 店舗の名称・住所・電話・営業時間・設置しているゲームの種類は、**各チェーンの公式サイトで確認したもの**
+  （GiGO / バンダイナムコアミューズメント）。店舗ページに出典と確認日を出す。公表されていない項目は空欄にし、推測で埋めない
+- 生成: `python scripts/build-game-center-data.py` → `database/data/game-centers.json`
+  （取得済みの内容は `scripts/.cache` に残るので、作り直すときはそこを消す）
+- 取り込み: `php artisan db:seed --class=GameCenterOfficialSeeder`（slug をキーにした upsert）
+- 口コミ・応援投票・地図からの店舗登録は利用者の投稿。店舗ページで公式情報と区別して表示する
+
+## デプロイ（Xserver）
+
+`main` への push で `.github/workflows/deploy.yml` が動く。**配置先が2か所に分かれている**ので注意。
+
+- `public/*` → `/home/xs501620/gesenmap.jp/public_html/`（SFTP）
+- アプリ本体（`app/` `resources/` `routes/` `database/` など）→ `/home/xs501620/gesenmap.jp/app/`（rsync）
+- そのあとSSHで `migrate` → 各種 `cache` → 店舗データの取り込み
+
+`.env`・`vendor`・`storage` はサーバー側のものを使うため送らない。
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">
