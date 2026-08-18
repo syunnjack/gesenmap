@@ -16,7 +16,7 @@ class GameCenterOfficialSeeder extends Seeder
      * 書き出す。slug をキーにした upsert なので、店舗情報が変わったら作り直して流し直す。
      * 利用者が投稿した店舗（slug が無い）はここでは触らない。
      */
-    private const CHUNK = 40; // SQLiteのプレースホルダ上限に収まる大きさ
+    private const CHUNK = 30; // SQLiteのプレースホルダ上限（既定999）に収まる大きさ
 
     public function run(): void
     {
@@ -81,10 +81,14 @@ class GameCenterOfficialSeeder extends Seeder
         }
 
         // 公式サイトから消えた店舗（閉店・掲載終了）は、こちらからも下げる。
+        // slug を全件 whereNotIn に渡すとプレースホルダ上限を超えるため、
+        // 今回取り込んだ印（確認日）が付かなかった行を消す。
         // 利用者が投稿した店舗（slug が無い）は対象外。
         $removed = DB::table('game_centers')
             ->whereNotNull('slug')
-            ->whereNotIn('slug', array_column($shops, 'slug'))
+            ->where(function ($query) use ($confirmedOn) {
+                $query->whereNull('confirmed_on')->orWhere('confirmed_on', '!=', $confirmedOn);
+            })
             ->delete();
 
         $this->command?->info(number_format($written).'店舗を取り込みました（'.$confirmedOn.'時点の公式情報）。'

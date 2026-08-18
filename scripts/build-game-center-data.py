@@ -393,6 +393,12 @@ def main() -> None:
             'sourceLabel': shop['sourceLabel'],
         })
 
+    # 同じ店舗が一覧に二度出てくることがある（イオンファンタジーで4件）。
+    unique = {}
+    for record in records:
+        unique.setdefault(record['slug'], record)
+    records = list(unique.values())
+
     records.sort(key=lambda record: (record['prefecture'] or '', record['name']))
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps({
