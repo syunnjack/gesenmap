@@ -4,6 +4,7 @@
   - GiGO お店情報サイト https://www.gigo.co.jp/shops
   - バンダイナムコ アミューズメント https://bandainamco-am.co.jp/game_center/
   - イオンファンタジー 店舗検索 https://www.fantasy.co.jp/shoplist/（ゲーム機を置くブランドのみ）
+  - タイトー 店舗検索 https://www.taito.co.jp/store（店舗一覧を返すAPIを1回だけ呼ぶ）
 
 取るのは公式ページに載っている事実だけ（店名・住所・電話・営業時間・設置ゲームの種類）。
 書いていないことは埋めない。緯度経度が公表されていない店舗は、
@@ -34,6 +35,12 @@ GIGO_SITEMAP = 'https://www.gigo.co.jp/sitemap.xml'
 NAMCO_SITEMAP = 'https://bandainamco-am.co.jp/sitemap_game_center.xml'
 NAMCO_SHOP = 'https://bandainamco-am.co.jp/game_center/loc/{}/'
 AEON_LIST = 'https://www.fantasy.co.jp/shoplist/page/{}'
+# タイトーの店舗検索が使っているAPI。1回で全店舗が返るので、robots.txt の
+# Crawl-delay 20 を守っても負担にならない。
+TAITO_API = ('https://www.taito.co.jp/api/LanguageStoreSearch/'
+             '?stateCode=&groupID=&lang=ja&ignore=false&isGlobalOnly=false')
+TAITO_STORE = 'https://www.taito.co.jp/store/{}'
+TAITO_REFERER = 'https://www.taito.co.jp/store'
 # イオンファンタジーはゲームセンター以外（屋内遊戯場・スイミング等）も運営している。
 # ゲーム機を置くブランドだけを載せる。
 AEON_BRANDS = {
@@ -295,6 +302,59 @@ def fetch_aeon() -> list[dict]:
     return shops
 
 
+def fetch_taito() -> list[dict]:
+    """タイトーの店舗一覧。住所・電話・営業時間・緯度経度がAPIから直接返る。"""
+    cache = CACHE / 'taito.json'
+    if cache.exists():
+        return json.loads(cache.read_text(encoding='utf-8'))
+
+    request = urllib.request.Request(TAITO_API, headers={
+        'User-Agent': UA, 'Accept-Language': 'ja', 'Referer': TAITO_REFERER,
+    })
+    with urllib.request.urlopen(request, timeout=60) as response:
+        items = json.loads(response.read().decode('utf-8', 'replace'))
+
+    shops = []
+    for item in items:
+        store = item.get('StoreData') or {}
+        if store.get('CountryCode') != 'JP':
+            continue  # 海外店舗は載せない
+
+        hours = []
+        business_hours = (item.get('BusinessHours') or store.get('BusinessHours') or '').strip()
+        if '～' in business_hours:
+            opens, closes = business_hours.split('～', 1)
+            hours.append({'days': None, 'opens': opens.strip(), 'closes': closes.strip()})
+
+        zip_code = (store.get('ZipCode') or '').strip()
+        holiday = (item.get('FixedHoliday') or '').strip()
+
+        shops.append({
+            'chain': 'タイトー',
+            'slug': 'taito-' + store['StoreID'],
+            'name': store.get('StoreName'),
+            'prefecture': store.get('State'),
+            'city': store.get('City'),
+            'address': store.get('FullAddress') or ''.join(filter(None, [
+                store.get('State'), store.get('City'), store.get('Address1'),
+            ])),
+            'postalCode': f'{zip_code[:3]}-{zip_code[3:]}' if len(zip_code) == 7 else None,
+            'tel': (item.get('TelephoneNo') or store.get('TelephoneNo') or '').strip() or None,
+            'lat': store.get('Latitude'),
+            'lng': store.get('Longitude'),
+            'hours': hours,
+            'games': [],
+            'features': [f'定休日 {holiday}'] if holiday else [],
+            'sourceUrl': TAITO_STORE.format(store['StoreID']),
+            'sourceLabel': 'タイトー公式サイト 店舗情報',
+        })
+
+    print(f'タイトー {len(shops)}件', flush=True)
+    CACHE.mkdir(exist_ok=True)
+    cache.write_text(json.dumps(shops, ensure_ascii=False), encoding='utf-8')
+    return shops
+
+
 def geocode(shops: list[dict]) -> None:
     """緯度経度が無い店舗を、国土地理院の住所検索APIで補う。"""
     cache_path = CACHE / 'geocode.json'
@@ -361,7 +421,7 @@ def has_any(words: list[str], keywords: tuple[str, ...]) -> bool:
 
 def main() -> None:
     CACHE.mkdir(exist_ok=True)
-    shops = fetch_gigo() + fetch_namco() + fetch_aeon()
+    shops = fetch_gigo() + fetch_namco() + fetch_aeon() + fetch_taito()
     geocode(shops)
 
     records = []

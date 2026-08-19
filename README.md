@@ -5,7 +5,7 @@
 ## 掲載データ
 
 - 店舗の名称・住所・電話・営業時間・設置しているゲームの種類は、**各チェーンの公式サイトで確認したもの**
-  （GiGO / バンダイナムコアミューズメント / イオンファンタジー）。店舗ページに出典と確認日を出す。公表されていない項目は空欄にし、推測で埋めない
+  （GiGO / バンダイナムコアミューズメント / イオンファンタジー / タイトー）。店舗ページに出典と確認日を出す。公表されていない項目は空欄にし、推測で埋めない
 - 生成: `python scripts/build-game-center-data.py` → `database/data/game-centers.json`
   （取得済みの内容は `scripts/.cache` に残るので、作り直すときはそこを消す）
 - 取り込み: `php artisan db:seed --class=GameCenterOfficialSeeder`（slug をキーにした upsert。
