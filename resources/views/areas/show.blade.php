@@ -31,6 +31,15 @@
     店名をクリックすると、住所・営業時間・設置しているゲームの種類と口コミを見られます。
   </p>
 
+  <p class="small mb-3">
+    遊びの種類で絞る：
+    @foreach(\App\Models\GameCenter::CATEGORIES as $categorySlug => $category)
+      @if(($categoryCounts[$categorySlug] ?? 0) > 0)
+        <a class="me-2" href="{{ route('areas.category', [$prefectureSlug, $categorySlug]) }}">{{ $category['name'] }}（{{ $categoryCounts[$categorySlug] }}）</a>
+      @endif
+    @endforeach
+  </p>
+
   <div id="map" style="height:380px;" class="mb-4"></div>
 
   @foreach($byCity as $city => $cityShops)

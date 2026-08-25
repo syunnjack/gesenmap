@@ -88,6 +88,29 @@
     </dl>
   </div>
 
+  <h2 class="h5">遊びの種類</h2>
+  @if($gameCenter->categoryUnknown())
+    <p class="text-muted small">
+      この店舗に置いている機種は、チェーンの公式サイトで公表されていません。
+      推測で分類はしていないため「未確認」としています。
+    </p>
+  @else
+    <p class="mb-3">
+      @foreach($gameCenter->categories as $categorySlug)
+        @php($prefectureSlug = \App\Models\GameCenter::slugForPrefecture((string) $gameCenter->prefecture))
+        @if($prefectureSlug)
+          <a class="badge bg-primary text-decoration-none me-1"
+             href="{{ route('areas.category', [$prefectureSlug, $categorySlug]) }}">{{ \App\Models\GameCenter::categoryName($categorySlug) }}</a>
+        @else
+          <span class="badge bg-primary me-1">{{ \App\Models\GameCenter::categoryName($categorySlug) }}</span>
+        @endif
+      @endforeach
+      <span class="text-muted small ms-1">
+        （{{ $gameCenter->category_source === 'brand' ? '公式のブランド区分より' : '公式が公表している設置機種より' }}）
+      </span>
+    </p>
+  @endif
+
   @if($gameCenter->games)
     <h2 class="h5">設置しているゲームの種類</h2>
     <p class="d-flex flex-wrap gap-2">

@@ -44,7 +44,10 @@
     <nav class="navbar navbar-dark bg-dark text-white p-3 mb-4">
         <div class="container d-flex justify-content-between align-items-center">
             <a href="{{ route('home') }}" class="h4 mb-0 text-white text-decoration-none">ゲーセンマップ</a>
-            <a href="{{ route('areas.index') }}" class="text-white small text-decoration-none">都道府県から探す</a>
+            <span class="small">
+                <a href="{{ route('categories.index') }}" class="text-white text-decoration-none me-3">遊びの種類から探す</a>
+                <a href="{{ route('areas.index') }}" class="text-white text-decoration-none">都道府県から探す</a>
+            </span>
         </div>
     </nav>
 
@@ -53,6 +56,7 @@
     </main>
 
     <footer class="container text-center text-muted small py-4 mt-4 border-top">
+        <a href="{{ route('categories.index') }}" class="text-muted me-3">遊びの種類から探す</a>
         <a href="{{ route('areas.index') }}" class="text-muted me-3">都道府県から探す</a>
         <a href="{{ route('about') }}" class="text-muted">このサイトについて</a>
     </footer>

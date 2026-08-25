@@ -27,6 +27,36 @@ class GameCenter extends Model
         'has_prize',
         'has_purikura',
         'has_capsule',
+        'categories',
+        'category_source',
+        'store_type',
+    ];
+
+    /**
+     * サイトのカテゴリ。URL・見出し・説明をここにまとめる。
+     * データ側（scripts/build-game-center-data.py）の値と一致させること。
+     */
+    public const CATEGORIES = [
+        'arcade' => [
+            'name' => 'アーケードゲーム',
+            'summary' => 'ビデオゲーム・音楽ゲーム・メダルゲーム・レースゲームなどを置いている店舗です。',
+        ],
+        'prize' => [
+            'name' => 'プライズ（クレーンゲーム）',
+            'summary' => 'クレーンゲームなど、景品を取るゲーム機を置いている店舗です。',
+        ],
+        'capsule' => [
+            'name' => 'カプセルトイ',
+            'summary' => 'ガチャガチャ・ガシャポンを置いている店舗と、カプセルトイの専門店です。',
+        ],
+        'purikura' => [
+            'name' => 'プリクラ',
+            'summary' => 'プリントシール機を置いている店舗と、プリクラの専門店です。',
+        ],
+        'other' => [
+            'name' => 'その他',
+            'summary' => 'ボウリングなど、上のどれにも当てはまらない遊びを置いている店舗です。',
+        ],
     ];
 
     /** 都道府県ページのURLに使うローマ字。 */
@@ -55,6 +85,7 @@ class GameCenter extends Model
             'lng' => 'float',
             'hours' => 'array',
             'games' => 'array',
+            'categories' => 'array',
             'features' => 'array',
             'confirmed_on' => 'date',
         ];
@@ -106,5 +137,22 @@ class GameCenter extends Model
     public function scopeOfficial($query)
     {
         return $query->whereNotNull('source_url');
+    }
+
+    /** そのカテゴリの店舗だけに絞る。categories は JSON 配列で持っている。 */
+    public function scopeInCategory($query, string $category)
+    {
+        return $query->whereJsonContains('categories', $category);
+    }
+
+    /** カテゴリが分かっていない店舗（画面では「未確認」と出す）。 */
+    public function categoryUnknown(): bool
+    {
+        return empty($this->categories);
+    }
+
+    public static function categoryName(string $category): ?string
+    {
+        return self::CATEGORIES[$category]['name'] ?? null;
     }
 }

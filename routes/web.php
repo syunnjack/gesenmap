@@ -15,6 +15,17 @@ Route::get('/area', [GameCenterController::class, 'areas'])->name('areas.index')
 Route::get('/area/{prefectureSlug}', [GameCenterController::class, 'area'])
     ->whereAlpha('prefectureSlug')
     ->name('areas.show');
+// カテゴリから探す（アーケード／プライズ／カプセルトイ／プリクラ／その他）
+Route::get('/category', [GameCenterController::class, 'categories'])->name('categories.index');
+Route::get('/category/{categorySlug}', [GameCenterController::class, 'category'])
+    ->whereAlpha('categorySlug')
+    ->name('categories.show');
+// エリア×カテゴリ。/area/{都道府県} より後ろに置くと衝突しない
+Route::get('/area/{prefectureSlug}/{categorySlug}', [GameCenterController::class, 'areaCategory'])
+    ->whereAlpha('prefectureSlug')
+    ->whereAlpha('categorySlug')
+    ->name('areas.category');
+
 Route::get('/g/{slug}', [GameCenterController::class, 'show'])
     ->where('slug', '[a-z0-9\-]+')
     ->name('game-centers.show');

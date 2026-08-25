@@ -99,8 +99,85 @@ class GameCenterController extends Controller
             'prefecture' => $prefecture,
             'prefectureSlug' => $prefectureSlug,
             'shops' => $shops,
+            // 遊びの種類ごとの件数。0件のカテゴリはページが404になるのでリンクを出さない
+            'categoryCounts' => $shops
+                ->flatMap(fn (GameCenter $shop) => $shop->categories ?? [])
+                ->countBy(),
             'byCity' => $shops->groupBy(fn (GameCenter $shop) => $shop->city ?: 'その他'),
             'prefectures' => $this->prefectureCounts(),
+        ]);
+    }
+
+    /** カテゴリの一覧（アーケード／プライズ／カプセルトイ／プリクラ／その他）。 */
+    public function categories()
+    {
+        $counts = GameCenter::query()
+            ->official()
+            ->get(['categories'])
+            ->flatMap(fn (GameCenter $shop) => $shop->categories ?? [])
+            ->countBy();
+
+        return view('categories.index', [
+            'categories' => GameCenter::CATEGORIES,
+            'counts' => $counts,
+            'unknown' => GameCenter::query()->official()
+                ->where(fn ($query) => $query->whereNull('categories')->orWhere('categories', '[]'))
+                ->count(),
+        ]);
+    }
+
+    /**
+     * カテゴリごとのページ。全国の店舗をそのまま並べるとHTMLが数MBになるので、
+     * 都道府県ごとの件数だけ出して、実際の一覧はエリア×カテゴリのページに渡す。
+     */
+    public function category(string $categorySlug)
+    {
+        if (! isset(GameCenter::CATEGORIES[$categorySlug])) {
+            throw new NotFoundHttpException;
+        }
+
+        $shops = GameCenter::query()->official()->inCategory($categorySlug)->get(['prefecture']);
+
+        if ($shops->isEmpty()) {
+            throw new NotFoundHttpException;
+        }
+
+        return view('categories.show', [
+            'categorySlug' => $categorySlug,
+            'category' => GameCenter::CATEGORIES[$categorySlug],
+            'total' => $shops->count(),
+            'byPrefecture' => $shops->countBy('prefecture')->sortDesc(),
+        ]);
+    }
+
+    /** エリア×カテゴリ。「東京都のプリクラがある店」のような絞り込み。 */
+    public function areaCategory(string $prefectureSlug, string $categorySlug)
+    {
+        $prefecture = GameCenter::prefectureForSlug($prefectureSlug);
+
+        if ($prefecture === null || ! isset(GameCenter::CATEGORIES[$categorySlug])) {
+            throw new NotFoundHttpException;
+        }
+
+        $shops = GameCenter::query()
+            ->where('prefecture', $prefecture)
+            ->inCategory($categorySlug)
+            ->withCount(['votes', 'reviews'])
+            ->orderBy('city')
+            ->orderBy('name')
+            ->get();
+
+        if ($shops->isEmpty()) {
+            throw new NotFoundHttpException;
+        }
+
+        return view('areas.category', [
+            'prefecture' => $prefecture,
+            'prefectureSlug' => $prefectureSlug,
+            'categorySlug' => $categorySlug,
+            'category' => GameCenter::CATEGORIES[$categorySlug],
+            'shops' => $shops,
+            'byCity' => $shops->groupBy(fn (GameCenter $shop) => $shop->city ?: 'その他'),
         ]);
     }
 

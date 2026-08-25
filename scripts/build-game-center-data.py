@@ -43,6 +43,16 @@ TAITO_STORE = 'https://www.taito.co.jp/store/{}'
 TAITO_REFERER = 'https://www.taito.co.jp/store'
 # イオンファンタジーはゲームセンター以外（屋内遊戯場・スイミング等）も運営している。
 # ゲーム機を置くブランドだけを載せる。
+# ブランド名そのものが業態を表しているものだけ、カテゴリに反映する。
+# モーリーファンタジー・PALO は置いている機種が公式サイトに出ていないため、
+# **カテゴリ未確認のまま**にする（推測で埋めない）。
+AEON_BRAND_GAMES = {
+    'tsp': ['カプセルトイ'],        # TOYS SPOT PALO（カプセルトイ専門店）
+    'capsule': ['カプセルトイ'],    # カプセル横丁
+    'psp': ['プライズ'],            # PRIZE SPOT PALO（プライズ専門店）
+    'crane': ['クレーンゲーム'],    # クレーン横丁
+    'cranekiwami': ['クレーンゲーム'],
+}
 AEON_BRANDS = {
     'molly': 'モーリーファンタジー',
     'mollyf': 'モーリーファンタジーf',
@@ -67,8 +77,38 @@ PREFECTURES = (
 
 # 公式表記 → サイト上の絞り込み項目
 PRIZE_WORDS = ('クレーンゲーム', 'プライズ')
-PURIKURA_WORDS = ('プリントシール', 'プリクラ')
+PURIKURA_WORDS = ('プリントシール', 'プリクラ', 'シールプリント')
 CAPSULE_WORDS = ('ガチャガチャ', 'カプセルトイ', 'ガシャポン')
+
+# サイトのカテゴリ。公式が出している機種名・ブランド名からのみ決める。
+# 分からない店は空のままにして、画面では「未確認」と出す（推測で埋めない）。
+CATEGORY_ARCADE = 'arcade'
+CATEGORY_PRIZE = 'prize'
+CATEGORY_CAPSULE = 'capsule'
+CATEGORY_PURIKURA = 'purikura'
+CATEGORY_OTHER = 'other'
+
+ARCADE_WORDS = (
+    'アーケードゲーム', 'ビデオゲーム', 'メダルゲーム', '音楽ゲーム', 'ドライブゲーム',
+    'ガンゲーム', 'カードゲーム', 'スポーツゲーム', 'キッズゲーム', 'キッズ向けゲーム',
+    'スターホース', 'ポーカー', '体感ゲーム',
+)
+OTHER_WORDS = ('ボウリング', '卓球', 'バッティング', 'ダーツ', 'ビリヤード', 'カラオケ')
+
+
+def categorize(labels: list[str]) -> list[str]:
+    """公式が出している機種名から、サイトのカテゴリを決める。"""
+    found = []
+    for category, words in (
+        (CATEGORY_PRIZE, PRIZE_WORDS),
+        (CATEGORY_CAPSULE, CAPSULE_WORDS),
+        (CATEGORY_PURIKURA, PURIKURA_WORDS),
+        (CATEGORY_ARCADE, ARCADE_WORDS),
+        (CATEGORY_OTHER, OTHER_WORDS),
+    ):
+        if has_any(labels, words):
+            found.append(category)
+    return found
 
 
 def get(url: str) -> str:
@@ -169,6 +209,38 @@ def fetch_gigo() -> list[dict]:
     return shops
 
 
+NAMCO_GAME_KINDS = (
+    'アーケードゲーム', '音楽ゲーム', 'メダルゲーム', 'シールプリント機', 'キッズ向けゲーム',
+)
+
+
+def namco_games(shop_url: str) -> list[str]:
+    """「設置ゲーム機」タブから、その店に置いてある区分を拾う。"""
+    try:
+        html = get(shop_url + '?p=game_info')
+    except Exception as error:
+        print(f'  設置ゲーム機の取得に失敗 {shop_url} {error}', flush=True)
+        return []
+    finally:
+        time.sleep(DELAY)
+    text = plain_text(html)
+    return [kind for kind in NAMCO_GAME_KINDS if kind in text]
+
+
+def namco_has_prize(shop_url: str) -> bool:
+    """「入荷プライズ」タブに商品が並んでいれば、プライズ機がある。"""
+    try:
+        html = get(shop_url + '?p=prize_info')
+    except Exception as error:
+        print(f'  入荷プライズの取得に失敗 {shop_url} {error}', flush=True)
+        return False
+    finally:
+        time.sleep(DELAY)
+    # 「無い」ことを言葉で判定すると表現が変わったときに壊れるので、
+    # 景品が並んでいるときだけ出る印（［発売元］）があるかで見る。
+    return '発売元' in plain_text(html)
+
+
 def fetch_namco() -> list[dict]:
     """バンダイナムコの店舗ページ。JSON-LDに緯度経度まで入っている。"""
     cache = CACHE / 'namco.json'
@@ -195,13 +267,19 @@ def fetch_namco() -> list[dict]:
         ld = json_ld(html, ('EntertainmentBusiness', 'LocalBusiness'))
         if ld:
             geo = ld.get('geo') or {}
+            # 機種は「設置ゲーム機」タブにある。一覧の絞り込みに、その店に
+            # 置いてある区分（アーケードゲーム／音楽ゲーム／メダルゲーム／
+            # シールプリント機／キッズ向けゲーム）がそのまま並ぶのでそれを使う。
+            games = namco_games(url)
+            if namco_has_prize(url):
+                games.append('プライズ')
             shops.append({
                 'chain': 'バンダイナムコアミューズメント',
                 'slug': 'namco-' + slug,
                 'name': ld.get('name'),
                 'tel': ld.get('telephone'),
                 'hours': opening_hours(ld),
-                'games': [],
+                'games': games,
                 'features': [],
                 'lat': geo.get('latitude'),
                 'lng': geo.get('longitude'),
@@ -274,6 +352,7 @@ def fetch_aeon() -> list[dict]:
 
             shops.append({
                 'chain': 'イオンファンタジー（'+AEON_BRANDS[brand]+'）',
+                'categorySource': 'brand' if brand in AEON_BRAND_GAMES else 'services',
                 'slug': 'aeon-' + (url.group(1).rstrip('/').rsplit('/', 1)[-1] if url
                                    else re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')),
                 'name': name,
@@ -287,7 +366,9 @@ def fetch_aeon() -> list[dict]:
                 'lat': float(coordinates.group(1)) if coordinates else None,
                 'lng': float(coordinates.group(2)) if coordinates else None,
                 'hours': [],
-                'games': ['カプセルトイ'] if any('カプセルトイ' in service for service in services) else [],
+                'games': (AEON_BRAND_GAMES.get(brand)
+                          or (['カプセルトイ']
+                              if any('カプセルトイ' in service for service in services) else [])),
                 'features': services,
                 'sourceUrl': url.group(1) if url else AEON_LIST.format(page),
                 'sourceLabel': 'イオンファンタジー公式サイト 店舗検索',
@@ -300,6 +381,21 @@ def fetch_aeon() -> list[dict]:
     CACHE.mkdir(exist_ok=True)
     cache.write_text(json.dumps(shops, ensure_ascii=False), encoding='utf-8')
     return shops
+
+
+# タイトーの StoreGroupID は業態に対応している（店舗検索の分類と一致）。
+# 店舗ページを1件ずつ見に行かなくても、一覧APIの応答だけで業態が分かる。
+TAITO_GROUPS = {
+    0: ('ゲームセンター', ['アーケードゲーム']),
+    1: ('ボウリング', ['ボウリング']),
+    2: ('プリクラ専門店', ['プリントシール']),
+    6: ('体験型施設', []),
+    8: ('アトラクション', []),
+    10: ('その他', []),
+    11: ('カプセルトイ専門店', ['カプセルトイ']),
+}
+# クレープ店（マリオンクレープ・ピコクレープ）はゲームを置いていないので載せない。
+TAITO_EXCLUDED_GROUPS = {7}
 
 
 def fetch_taito() -> list[dict]:
@@ -329,8 +425,15 @@ def fetch_taito() -> list[dict]:
         zip_code = (store.get('ZipCode') or '').strip()
         holiday = (item.get('FixedHoliday') or '').strip()
 
+        group = store.get('StoreGroupID')
+        if group in TAITO_EXCLUDED_GROUPS:
+            continue  # クレープ店。ゲームを置いていない
+        store_type, games = TAITO_GROUPS.get(group, ('その他', []))
+
         shops.append({
             'chain': 'タイトー',
+            'storeType': store_type,
+            'categorySource': 'brand',
             'slug': 'taito-' + store['StoreID'],
             'name': store.get('StoreName'),
             'prefecture': store.get('State'),
@@ -343,7 +446,7 @@ def fetch_taito() -> list[dict]:
             'lat': store.get('Latitude'),
             'lng': store.get('Longitude'),
             'hours': hours,
-            'games': [],
+            'games': list(games),
             'features': [f'定休日 {holiday}'] if holiday else [],
             'sourceUrl': TAITO_STORE.format(store['StoreID']),
             'sourceLabel': 'タイトー公式サイト 店舗情報',
@@ -431,6 +534,7 @@ def main() -> None:
         if shop.get('prefecture') not in PREFECTURES:
             continue  # 海外店舗・オンライン店舗は載せない
         games = clean_labels(shop.get('games') or [])
+        categories = categorize(games)
         records.append({
             'slug': shop['slug'],
             'name': shop['name'],
@@ -445,6 +549,12 @@ def main() -> None:
             'hours': shop.get('hours') or [],
             'games': games,
             'features': normalize_features(clean_labels(shop.get('features') or [])),
+            'storeType': shop.get('storeType'),
+            # カテゴリ（アーケード／プライズ／カプセルトイ／プリクラ／その他）。
+            # 公式に出ている機種名かブランド名からしか決めない。空なら画面では
+            # 「未確認」と出す。categorySource はその根拠。
+            'categories': categories,
+            'categorySource': (shop.get('categorySource') or 'machines') if categories else 'unknown',
             # 公式に「設置している」と書かれている場合だけ true にする
             'hasPrize': has_any(games, PRIZE_WORDS),
             'hasPurikura': has_any(games, PURIKURA_WORDS),

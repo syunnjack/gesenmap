@@ -58,6 +58,11 @@ class GameCenterOfficialSeeder extends Seeder
                     'has_prize' => $shop['hasPrize'],
                     'has_purikura' => $shop['hasPurikura'],
                     'has_capsule' => $shop['hasCapsule'],
+                    // カテゴリは公式の機種名・ブランド名からしか付けない。
+                    // 決められなかった店は空配列のまま（画面では「未確認」）。
+                    'categories' => json_encode($shop['categories'] ?? [], JSON_UNESCAPED_UNICODE),
+                    'category_source' => $shop['categorySource'] ?? 'unknown',
+                    'store_type' => $shop['storeType'] ?? null,
                     'source_url' => $shop['sourceUrl'],
                     'source_label' => $shop['sourceLabel'],
                     'confirmed_on' => $confirmedOn,
@@ -73,6 +78,7 @@ class GameCenterOfficialSeeder extends Seeder
                     'name', 'chain', 'prefecture', 'city', 'address', 'postal_code', 'tel',
                     'lat', 'lng', 'hours', 'games', 'features',
                     'has_prize', 'has_purikura', 'has_capsule',
+                    'categories', 'category_source', 'store_type',
                     'source_url', 'source_label', 'confirmed_on', 'updated_at',
                 ]
             );
