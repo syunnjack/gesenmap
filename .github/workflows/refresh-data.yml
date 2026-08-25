@@ -15,6 +15,8 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    outputs:
+      changed: ${{ steps.commit.outputs.changed }}
     steps:
       - uses: actions/checkout@v5
 
@@ -27,11 +29,14 @@ jobs:
         run: python scripts/build-game-center-data.py
 
       - name: Commit if the data changed
+        id: commit
         run: |
           if git diff --quiet -- database/data/game-centers.json; then
             echo "変更なし。コミットしません。"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add database/data/game-centers.json
@@ -40,3 +45,11 @@ jobs:
           scripts/build-game-center-data.py の定期実行による更新。
           閉店・掲載終了した店舗は取り込み時に掲載から外れる。"
           git push
+
+  # bot の push では Deploy が起動しないので、ここから明示的に呼ぶ。
+  # これが無いと、取り直したデータがいつまでも本番に出ない。
+  deploy:
+    needs: refresh
+    if: needs.refresh.outputs.changed == 'true'
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

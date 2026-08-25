@@ -4,12 +4,19 @@ on:
   push:
     branches: [main, master]
   workflow_dispatch:
+  # データ更新（refresh-data.yml）から呼ぶ。bot の push では push トリガーが
+  # 動かないため、呼んでもらわないと取り直したデータが本番に出ない。
+  workflow_call:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # refresh-data から呼ばれたときは、bot が commit したあとの main を取る。
+      # 既定では呼び出し元の起動時点のSHAになり、取り直したデータが入らない。
       - uses: actions/checkout@v5
+        with:
+          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
