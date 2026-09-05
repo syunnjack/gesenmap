@@ -32,6 +32,7 @@ Route::get('/g/{slug}', [GameCenterController::class, 'show'])
 
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::view('/about', 'about')->name('about');
+Route::view('/rules', 'rules')->name('rules');
 
 Route::post('/game-centers/{gameCenter}/vote', [VoteController::class, 'store'])
     ->middleware('throttle:10,1')

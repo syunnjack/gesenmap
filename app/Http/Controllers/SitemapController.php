@@ -10,6 +10,7 @@ class SitemapController extends Controller
     {
         $urls = collect([
             ['loc' => route('home'), 'priority' => '1.0'],
+            ['loc' => route('rules'), 'priority' => '0.6'],
             ['loc' => route('about'), 'priority' => '0.3'],
             ['loc' => route('areas.index'), 'priority' => '0.8'],
             ['loc' => route('categories.index'), 'priority' => '0.8'],

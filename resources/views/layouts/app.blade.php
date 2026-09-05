@@ -47,6 +47,7 @@
             <span class="small">
                 <a href="{{ route('categories.index') }}" class="text-white text-decoration-none me-3">遊びの種類から探す</a>
                 <a href="{{ route('areas.index') }}" class="text-white text-decoration-none">都道府県から探す</a>
+                <a href="{{ route('rules') }}" class="text-white text-decoration-none ms-3">公式のルール</a>
             </span>
         </div>
     </nav>
@@ -58,6 +59,7 @@
     <footer class="container text-center text-muted small py-4 mt-4 border-top">
         <a href="{{ route('categories.index') }}" class="text-muted me-3">遊びの種類から探す</a>
         <a href="{{ route('areas.index') }}" class="text-muted me-3">都道府県から探す</a>
+        <a href="{{ route('rules') }}" class="text-muted me-3">公式のルール</a>
         <a href="{{ route('about') }}" class="text-muted">このサイトについて</a>
     </footer>
 
